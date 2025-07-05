@@ -1,24 +1,35 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { fetchUserProfile } from "@/lib/api"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { UserResponse } from "@/types/profiledatatype"
 
 export default function PersonalInformation() {
   // const TOKEN = session?.data?.user?.accessToken;
   const session = useSession();
   const users = session?.data?.user;
 
-  const { data: user, isLoading } = useQuery({
-    queryKey: ["user-profile"],
-    queryFn: fetchUserProfile,
-  })
-  console.log(users)
+  const { data, isLoading } = useQuery<UserResponse>({
+    queryKey: ["user", users?.id],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${users?.id}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${users?.accessToken}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user");
+      return res.json();
+    },
+    enabled: !!users?.id,
+  });
+
+  const user = data?.data;
 
   if (isLoading) {
     return (
@@ -48,16 +59,16 @@ export default function PersonalInformation() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={users?.profileImage || "/placeholder.svg"} alt={users?.firstName} />
+              <AvatarImage src={user?.profileImage || "/placeholder.svg"} alt={user?.firstName} />
               <AvatarFallback className="text-lg font-semibold">
-                {users?.firstName
+                {user?.firstName
                   .split(" ")
                   .map((n) => n[0])
                   .join("")}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="text-xl font-semibold">{users?.firstName} {users?.lastName}</h2>
+              <h2 className="text-xl font-semibold">{user?.firstName} {user?.lastName}</h2>
             </div>
           </div>
           <Link href="/dashboard/settings/personal-information/edit">
@@ -68,18 +79,18 @@ export default function PersonalInformation() {
         <div className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="firstname">First Name</Label>
-            <Input id="firstname" value={users?.firstName} disabled className="bg-gray-50" />
+            <Input id="firstname" value={user?.firstName} disabled className="bg-gray-50" />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="lastname">Last Name</Label>
-            <Input id="lastname" value={users?.lastName} disabled className="bg-gray-50" />
+            <Input id="lastname" value={user?.lastName} disabled className="bg-gray-50" />
           </div>
 
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" value={users?.email} disabled className="bg-gray-50" />
+            <Input id="email" value={user?.email} disabled className="bg-gray-50" />
           </div>
         </div>
       </div>

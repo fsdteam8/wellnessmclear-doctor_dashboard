@@ -3,16 +3,18 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation } from "@tanstack/react-query"
-import { useRouter } from "next/navigation"
+import { useMutation, useQuery } from "@tanstack/react-query"
+// import { useRouter } from "next/navigation"
 import * as z from "zod"
-import { changePassword } from "@/lib/api"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+// import { toast } from "@/hooks/use-toast"
+import { useSession } from "next-auth/react"
+import { toast } from "sonner"
+import { UserResponse } from "@/types/profiledatatype"
 
 const passwordSchema = z
   .object({
@@ -28,7 +30,8 @@ const passwordSchema = z
 type PasswordFormData = z.infer<typeof passwordSchema>
 
 export default function ChangePassword() {
-  const router = useRouter()
+  const { data: session } = useSession()
+
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -44,27 +47,64 @@ export default function ChangePassword() {
     resolver: zodResolver(passwordSchema),
   })
 
-  const passwordMutation = useMutation({
-    mutationFn: changePassword,
-    onSuccess: () => {
-      reset()
-      router.push("/settings")
-      toast({
-        title: "Password changed successfully",
-        description: "Your password has been updated.",
-      })
+  const users = session?.user;
+
+  const { data } = useQuery<UserResponse>({
+    queryKey: ["user", users?.id],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${users?.id}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${users?.accessToken}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user");
+      return res.json();
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to change password. Please try again.",
-        variant: "destructive",
+    enabled: !!users?.id,
+  });
+
+  const user = data?.data;
+
+  const passwordMutation = useMutation<unknown, Error, PasswordFormData>({
+    mutationFn: async (data: PasswordFormData) => {
+      const token = session?.user?.accessToken
+
+      const payload = {
+        oldPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       })
+
+      const response = await res.json()
+      if (!res.ok || !response?.status) {
+        throw new Error(response?.message || "Failed to update password")
+      }
+
+      return response.data
+    },
+    onSuccess: (data) => {
+      reset()
+      const response = data as { message?: string }
+      toast.success(response.message || "Password changed successfully")
+      // router.push("/settings")
+    },
+    onError: (err: Error) => {
+      console.log(err)
+      toast.success( "Failed to change password")
     },
   })
 
   const onSubmit = (data: PasswordFormData) => {
-    console.log("Password change data:", {
+    console.log("Password change submitted:", {
       ...data,
       currentPassword: "***",
       newPassword: "***",
@@ -81,12 +121,11 @@ export default function ChangePassword() {
   }
 
   const handleCancel = () => {
-    router.push("/settings")
+    // router.push("/settings")
   }
 
   return (
     <div className="py-10 px-12 space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Setting</h1>
         <p className="text-sm text-gray-500">
@@ -94,20 +133,18 @@ export default function ChangePassword() {
         </p>
       </div>
 
-      {/* Profile Header */}
-      <div className="bg-white rounded-lg border p-6">
+      <div className=" rounded-lg p-6">
         <div className="flex items-center gap-4 mb-8">
           <Avatar className="h-16 w-16">
-            <AvatarImage src="/placeholder.svg?height=64&width=64" alt="Mr. Raja" />
-            <AvatarFallback className="text-lg font-semibold">MR</AvatarFallback>
+            <AvatarImage src={user?.profileImage} alt={user?.firstName} />
+            <AvatarFallback className="text-lg font-semibold">{user?.firstName?.charAt(1)}</AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="text-xl font-semibold">Mr. Raja</h2>
-            <p className="text-gray-500">#raja123</p>
+            <h2 className="text-xl font-semibold">{user?.firstName} {user?.lastName}</h2>
+            {/* <p className="text-gray-500">#raja123</p> */}
           </div>
         </div>
 
-        {/* Change Password Form */}
         <div className="border-t pt-6">
           <h3 className="text-lg font-semibold mb-6">Change Password</h3>
 
@@ -121,20 +158,16 @@ export default function ChangePassword() {
                     type={showPasswords.current ? "text" : "password"}
                     {...register("currentPassword")}
                     className={errors.currentPassword ? "border-red-500 pr-10" : "pr-10"}
-                    placeholder="••••••••••"
+                    placeholder="••••••••"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 py-2"
                     onClick={() => togglePasswordVisibility("current")}
                   >
-                    {showPasswords.current ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
+                    {showPasswords.current ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                   </Button>
                 </div>
                 {errors.currentPassword && <p className="text-sm text-red-500">{errors.currentPassword.message}</p>}
@@ -148,20 +181,16 @@ export default function ChangePassword() {
                     type={showPasswords.new ? "text" : "password"}
                     {...register("newPassword")}
                     className={errors.newPassword ? "border-red-500 pr-10" : "pr-10"}
-                    placeholder="••••••••••"
+                    placeholder="••••••••"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 py-2"
                     onClick={() => togglePasswordVisibility("new")}
                   >
-                    {showPasswords.new ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
+                    {showPasswords.new ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                   </Button>
                 </div>
                 {errors.newPassword && <p className="text-sm text-red-500">{errors.newPassword.message}</p>}
@@ -175,27 +204,23 @@ export default function ChangePassword() {
                     type={showPasswords.confirm ? "text" : "password"}
                     {...register("confirmPassword")}
                     className={errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
-                    placeholder="••••••••••"
+                    placeholder="••••••••"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 py-2"
                     onClick={() => togglePasswordVisibility("confirm")}
                   >
-                    {showPasswords.confirm ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
+                    {showPasswords.confirm ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                   </Button>
                 </div>
                 {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end">
+            <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={handleCancel} disabled={passwordMutation.isPending}>
                 Cancel
               </Button>

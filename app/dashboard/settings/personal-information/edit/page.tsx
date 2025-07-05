@@ -19,7 +19,7 @@ import { UserResponse } from "@/types/profiledatatype";
 
 // Zod schema update for dob as a date string in ISO format (YYYY-MM-DD)
 const profileSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  firstName: z.string().min(2, "Full name must be at least 2 characters"),
   lastName: z.string().min(3, "User name must be at least 3 characters"),
   phoneNumber: z.string().nullable().optional(),
   dob: z
@@ -60,7 +60,7 @@ export default function EditPersonalInformation() {
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      fullName: "",
+      firstName: "",
       lastName: "",
       phoneNumber: "",
       dob: "",
@@ -97,7 +97,7 @@ export default function EditPersonalInformation() {
       }
 
       reset({
-        fullName: user.firstName || "",
+        firstName: user.firstName || "",
         lastName: user.lastName || "",
         phoneNumber: user.phoneNumber || "",
         dob: dobValue,
@@ -256,9 +256,9 @@ export default function EditPersonalInformation() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" {...register("fullName")} />
-              {errors.fullName && <p className="text-sm text-red-500">{errors.fullName.message}</p>}
+              <Label htmlFor="firstName">Full Name</Label>
+              <Input id="firstName" {...register("firstName")} />
+              {errors.firstName && <p className="text-sm text-red-500">{errors.firstName.message}</p>}
             </div>
 
             <div className="space-y-2">
