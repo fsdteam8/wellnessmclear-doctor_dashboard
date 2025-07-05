@@ -7,7 +7,7 @@ const Redirect = () => {
         // Redirect to dashboard after 3 seconds
         const timer = setTimeout(() => {
             window.location.href = '/dashboard';
-        }, 3000);
+        }, 1000);
 
         // Cleanup the timer on component unmount
         return () => clearTimeout(timer);
