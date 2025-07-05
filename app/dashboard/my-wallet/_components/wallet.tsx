@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 export default function MyWallet() {
+  
   const { data: walletRecords, isLoading } = useQuery({
     queryKey: ["wallet-records"],
     queryFn: fetchWalletRecords,

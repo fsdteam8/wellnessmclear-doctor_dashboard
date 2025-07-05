@@ -1,92 +1,202 @@
-"use client"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useRouter } from "next/navigation"
-import * as z from "zod"
-import { fetchUserProfile, updateUserProfile } from "@/lib/api"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "@/hooks/use-toast"
+"use client";
 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+import * as z from "zod";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+import { toast } from "@/hooks/use-toast";
+import { SessionUser } from "@/types/session";
+import { UserResponse } from "@/types/profiledatatype";
+
+// Zod schema update for dob as a date string in ISO format (YYYY-MM-DD)
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  userName: z.string().min(3, "Username must be at least 3 characters"),
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 characters"),
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
-  gender: z.string().min(1, "Gender is required"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-})
+  lastName: z.string().min(3, "User name must be at least 3 characters"),
+  phoneNumber: z.string().nullable().optional(),
+  dob: z
+    .string()
+    .min(1, "Date of birth is required")
+    .refine((val) => {
+      // Validate valid date format yyyy-mm-dd and that it's a real date
+      const date = new Date(val);
+      if (Number.isNaN(date.getTime())) return false;
 
-type ProfileFormData = z.infer<typeof profileSchema>
+      // Optional: disallow future dates
+      const today = new Date();
+      if (date > today) return false;
+
+      return /^\d{4}-\d{2}-\d{2}$/.test(val);
+    }, {
+      message: "Invalid date of birth",
+    }),
+  address: z.string().min(5, "Address must be at least 5 characters"),
+});
+
+type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function EditPersonalInformation() {
-  const router = useRouter()
-  const queryClient = useQueryClient()
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const userSession = session?.user as SessionUser;
 
-  const { data: user, isLoading } = useQuery({
-    queryKey: ["user-profile"],
-    queryFn: fetchUserProfile,
-  })
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
+    reset,
     formState: { errors },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: user,
-  })
+    defaultValues: {
+      fullName: "",
+      lastName: "",
+      phoneNumber: "",
+      dob: "",
+      address: "",
+    },
+  });
+
+  const { data, isLoading } = useQuery<UserResponse>({
+    queryKey: ["user", userSession?.id],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${userSession.id}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userSession.accessToken}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user");
+      return res.json();
+    },
+    enabled: !!userSession?.id,
+  });
+
+  const user = data?.data;
+
+  useEffect(() => {
+    if (user) {
+      // Normalize dob to YYYY-MM-DD for input type="date"
+      let dobValue = "";
+      if (user.dob) {
+        const d = new Date(user.dob);
+        if (!isNaN(d.getTime())) {
+          dobValue = d.toISOString().substring(0, 10);
+        }
+      }
+
+      reset({
+        fullName: user.firstName || "",
+        lastName: user.lastName || "",
+        phoneNumber: user.phoneNumber || "",
+        dob: dobValue,
+        address: user.address || "",
+      });
+
+      if (user.profileImage) {
+        setPreviewAvatar(user.profileImage);
+      }
+    }
+  }, [user, reset]);
 
   const updateMutation = useMutation({
-    mutationFn: updateUserProfile,
+    mutationFn: async (data: ProfileFormData) => {
+      const token = session?.user?.accessToken;
+      const userId = session?.user?.id;
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      const response = await res.json();
+      if (!res.ok || !response?.status) {
+        throw new Error(response?.message || "Failed to update profile");
+      }
+
+      return response.data;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-profile"] })
-      router.push("/settings/personal-information")
       toast({
         title: "Profile updated successfully",
         description: "Your profile information has been saved.",
-      })
+      });
+      queryClient.invalidateQueries({ queryKey: ["user", userSession?.id] });
+      router.push("/dashboard/settings/personal-information");
     },
-    onError: () => {
+    onError: (err) => {
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: err.message || "Failed to update profile.",
         variant: "destructive",
-      })
+      });
     },
-  })
+  });
+
+  const avatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const token = session?.user?.accessToken;
+
+      const formData = new FormData();
+      formData.append("profileImage", file);
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/upload-avatar/${userSession?.id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.status) {
+        throw new Error(data.message || "Failed to update avatar");
+      }
+
+      return data.data;
+    },
+    onSuccess: () => {
+      toast({ title: "Avatar updated" });
+      queryClient.invalidateQueries({ queryKey: ["user", userSession?.id] });
+      setSelectedAvatarFile(null);
+      setPreviewAvatar(null);
+    },
+    onError: (err) => {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const onSubmit = (data: ProfileFormData) => {
-    console.log("Profile form data:", data)
-    updateMutation.mutate(data)
-  }
+    updateMutation.mutate(data);
+  };
 
   const handleCancel = () => {
-    router.push("/dashboard/settings/personal-information")
-  }
+    router.push("/dashboard/settings/personal-information");
+  };
 
-  if (isLoading) {
-    return (
-      <div className="py-10 px-12">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-48"></div>
-          <div className="h-96 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) return null
+  if (!userSession || isLoading) return null;
 
   return (
     <div className="p-6 space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Setting</h1>
         <p className="text-sm text-gray-500">
@@ -94,79 +204,90 @@ export default function EditPersonalInformation() {
         </p>
       </div>
 
-      {/* Profile Form */}
-      <div className="bg-white rounded-lg border p-6">
+      <div className=" rounded-lg  p-6">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
-              <AvatarFallback className="text-lg font-semibold">
-                {user.fullName
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="text-xl font-semibold">{user.fullName}</h2>
+          <div className="flex flex-col mb-5 gap-4">
+            <input
+              id="avatarInput"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setSelectedAvatarFile(file);
+                  setPreviewAvatar(URL.createObjectURL(file));
+                }
+              }}
+              className="hidden"
+            />
+            <div
+              className="cursor-pointer"
+              onClick={() => document.getElementById("avatarInput")?.click()}
+            >
+              <Avatar className="h-20 w-20">
+                <AvatarImage
+                  src={previewAvatar || user?.profileImage || "/placeholder.svg"}
+                  alt={user?.firstName || "User"}
+                />
+                <AvatarFallback>
+                  {user?.firstName?.split(" ").map((n) => n[0]).join("")}
+                </AvatarFallback>
+              </Avatar>
             </div>
+
+            <Button
+              type="button"
+              variant="default"
+              className="w-fit"
+              onClick={() => {
+                if (selectedAvatarFile) {
+                  avatarMutation.mutate(selectedAvatarFile);
+                } else {
+                  toast({ title: "Please select an image first." });
+                }
+              }}
+              disabled={avatarMutation.isPending}
+            >
+              {avatarMutation.isPending ? "Uploading..." : "Update Avatar"}
+            </Button>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700">Update Profile</Button>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" {...register("fullName")} className={errors.fullName ? "border-red-500" : ""} />
+              <Input id="fullName" {...register("fullName")} />
               {errors.fullName && <p className="text-sm text-red-500">{errors.fullName.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="userName">User Name</Label>
-              <Input id="userName" {...register("userName")} className={errors.userName ? "border-red-500" : ""} />
-              {errors.userName && <p className="text-sm text-red-500">{errors.userName.message}</p>}
+              <Label htmlFor="lastName">User Name</Label>
+              <Input id="lastName" {...register("lastName")} />
+              {errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="phoneNumber">Phone Number</Label>
-              <Input
-                id="phoneNumber"
-                {...register("phoneNumber")}
-                className={errors.phoneNumber ? "border-red-500" : ""}
-              />
+              <Input id="phoneNumber" {...register("phoneNumber")} />
               {errors.phoneNumber && <p className="text-sm text-red-500">{errors.phoneNumber.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
-              <Select value={watch("gender")} onValueChange={(value) => setValue("gender", value)}>
-                <SelectTrigger className={errors.gender ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select Gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.gender && <p className="text-sm text-red-500">{errors.gender.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <Label htmlFor="dob">Date of Birth</Label>
+              {/* Modern date input */}
               <Input
-                id="dateOfBirth"
-                {...register("dateOfBirth")}
-                placeholder="DD/MM/YYYY"
-                className={errors.dateOfBirth ? "border-red-500" : ""}
+                id="dob"
+                type="date"
+                {...register("dob")}
+                // placeholder removed, date input doesn't need it
               />
-              {errors.dateOfBirth && <p className="text-sm text-red-500">{errors.dateOfBirth.message}</p>}
+              {errors.dob && <p className="text-sm text-red-500">{errors.dob.message}</p>}
             </div>
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="address">Address</Label>
-              <Input id="address" {...register("address")} className={errors.address ? "border-red-500" : ""} />
+              <Input id="address" {...register("address")} />
               {errors.address && <p className="text-sm text-red-500">{errors.address.message}</p>}
             </div>
           </div>
@@ -182,5 +303,5 @@ export default function EditPersonalInformation() {
         </form>
       </div>
     </div>
-  )
+  );
 }

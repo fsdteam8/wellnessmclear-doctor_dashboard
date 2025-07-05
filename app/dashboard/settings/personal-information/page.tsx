@@ -7,12 +7,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 
 export default function PersonalInformation() {
+  // const TOKEN = session?.data?.user?.accessToken;
+  const session = useSession();
+  const users = session?.data?.user;
+
   const { data: user, isLoading } = useQuery({
     queryKey: ["user-profile"],
     queryFn: fetchUserProfile,
   })
+  console.log(users)
 
   if (isLoading) {
     return (
@@ -42,16 +48,16 @@ export default function PersonalInformation() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
+              <AvatarImage src={users?.profileImage || "/placeholder.svg"} alt={users?.firstName} />
               <AvatarFallback className="text-lg font-semibold">
-                {user.fullName
+                {users?.firstName
                   .split(" ")
                   .map((n) => n[0])
                   .join("")}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="text-xl font-semibold">{user.fullName}</h2>
+              <h2 className="text-xl font-semibold">{users?.firstName} {users?.lastName}</h2>
             </div>
           </div>
           <Link href="/dashboard/settings/personal-information/edit">
@@ -61,13 +67,19 @@ export default function PersonalInformation() {
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input id="fullName" value={user.fullName} disabled className="bg-gray-50" />
+            <Label htmlFor="firstname">First Name</Label>
+            <Input id="firstname" value={users?.firstName} disabled className="bg-gray-50" />
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="lastname">Last Name</Label>
+            <Input id="lastname" value={users?.lastName} disabled className="bg-gray-50" />
+          </div>
+
+
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" value={user.email} disabled className="bg-gray-50" />
+            <Input id="email" value={users?.email} disabled className="bg-gray-50" />
           </div>
         </div>
       </div>

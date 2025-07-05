@@ -22,6 +22,7 @@ declare module "next-auth" {
     role: string;
     profileImage: string;
     accessToken: string;
+    dateOfBirth?: string | null;
   }
 }
 
