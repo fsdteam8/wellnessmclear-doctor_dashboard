@@ -262,7 +262,7 @@ export default function EditPersonalInformation() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="lastName">User Name</Label>
+              <Label htmlFor="lastName">Last Name</Label>
               <Input id="lastName" {...register("lastName")} />
               {errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}
             </div>
@@ -273,6 +273,7 @@ export default function EditPersonalInformation() {
               {errors.phoneNumber && <p className="text-sm text-red-500">{errors.phoneNumber.message}</p>}
             </div>
 
+
             <div className="space-y-2">
               <Label htmlFor="dob">Date of Birth</Label>
               {/* Modern date input */}
@@ -280,7 +281,7 @@ export default function EditPersonalInformation() {
                 id="dob"
                 type="date"
                 {...register("dob")}
-                // placeholder removed, date input doesn't need it
+              // placeholder removed, date input doesn't need it
               />
               {errors.dob && <p className="text-sm text-red-500">{errors.dob.message}</p>}
             </div>
@@ -290,6 +291,11 @@ export default function EditPersonalInformation() {
               <Input id="address" {...register("address")} />
               {errors.address && <p className="text-sm text-red-500">{errors.address.message}</p>}
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" value={user?.email} disabled />
+            {/* {errors.phoneNumber && <p className="text-sm text-red-500">{errors.phoneNumber.message}</p>} */}
           </div>
 
           <div className="flex gap-3 justify-end">
