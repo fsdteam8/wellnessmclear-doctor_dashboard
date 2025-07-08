@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Cookies from "js-cookie";
 import { Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -172,7 +173,7 @@ export default function LoginForm() {
         </form>
       </Form>
 
-      {/* <div className="text-center text-sm mt-4">
+      <div className="text-center text-sm mt-4">
         <span className="text-gray-600">New to our platform?</span>{" "}
         <Link
           href={callback ? `/sign-up?callback=${callback}` : "/sign-up"}
@@ -180,7 +181,7 @@ export default function LoginForm() {
         >
           Sign Up Here
         </Link>
-      </div> */}
+      </div>
     </>
   );
 }
