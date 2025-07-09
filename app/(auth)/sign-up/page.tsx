@@ -1,45 +1,71 @@
-import { Loader2 } from "lucide-react";
-// import Image from "next/image";
-import { Suspense } from "react";
-import { SignUpForm } from "./_components/sign-up-form";
+"use client"
 
-export default function LoginPage() {
+import { useState } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import BasicInfoForm from "./_components/basic-info-form"
+import ProfessionalInfoForm from "./_components/professional-info-form"
+
+const queryClient = new QueryClient()
+
+export interface BasicFormData {
+  firstName: string
+  lastName: string
+  email: string
+  phoneNumber: string
+  address: string
+  password: string
+  confirmPassword: string
+  agreeToTerms: boolean
+}
+
+export interface ProfessionalFormData {
+  profilePicture: File | null
+  gender: string
+  dateOfBirth: string
+  specialization: string
+  description: string
+  qualification: string
+  fieldOfExperiences: string
+  yearsOfExperience: string
+  availability: Array<{
+    day: string
+    slots: Array<{
+      startTime: string
+      endTime: string
+    }>
+  }>
+  servicesOffered: string
+  skills: Array<{
+    skillName: string
+    description: string
+  }>
+  certifications: File[]
+}
+
+export default function Home() {
+  const [currentStep, setCurrentStep] = useState(1)
+  const [basicData, setBasicData] = useState<BasicFormData | null>(null)
+
+  const handleBasicFormSubmit = (data: BasicFormData) => {
+    setBasicData(data)
+    setCurrentStep(2)
+  }
+
+  const handleBack = () => {
+    setCurrentStep(1)
+  }
+
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      {/* Left side - Image */}
-      {/* <div className="hidden lg:w-3/5 md:w-1/2 bg-gray-900 lg:block relative">
-        <Image
-          src="https://files.edgestore.dev/t7diwg54d3s82m9n/wellnessmclear/_public/login.jpg"
-          alt="Team meeting"
-          fill
-          className="object-cover"
-        />
-      </div> */}
-
-      {/* Right side - Login form */}
-      <div className="flex w-full flex-col items-center justify-center px-4 py-12 lg:w-1/2 relative">
-        <div className="mx-auto w-full max-w-md space-y-12">
-          <div className="text-center">
-            <p className="mt-2 text-sm text-gray-600">
-              Welcome to Wellness Made Clear
-            </p>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Create an account 
-            </h1>
-            
-          </div>
-
-          <Suspense
-            fallback={
-              <div className="min-h-[400px] w-full flex justify-center items-center">
-                <Loader2 className="animate-spin" />
-              </div>
-            }
-          >
-            <SignUpForm />
-          </Suspense>
+    <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-md mx-auto">
+          {currentStep === 1 ? (
+            <BasicInfoForm onSubmit={handleBasicFormSubmit} />
+          ) : (
+            <ProfessionalInfoForm basicData={basicData!} onBack={handleBack} />
+          )}
         </div>
       </div>
-    </div>
-  );
+    </QueryClientProvider>
+  )
 }

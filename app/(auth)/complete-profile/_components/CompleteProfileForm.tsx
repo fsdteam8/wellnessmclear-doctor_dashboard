@@ -84,7 +84,7 @@ export default function CompleteProfileForm() {
     },
   })
 
-interface CompleteProfileFormValues {
+  interface CompleteProfileFormValues {
     gender: string
     dob: string
     specialization: string
@@ -96,11 +96,11 @@ interface CompleteProfileFormValues {
     service: string
     certifications?: FileList
     profileImage?: FileList
-}
+  }
 
-const onSubmit = (data: CompleteProfileFormValues) => {
+  const onSubmit = (data: CompleteProfileFormValues) => {
     mutate(data)
-}
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4">
