@@ -177,13 +177,13 @@ export default function BasicInfoForm({ onSubmit }: BasicInfoFormProps) {
             onCheckedChange={(checked) => handleInputChange("agreeToTerms", checked as boolean)}
           />
           <Label htmlFor="terms" className="text-sm text-gray-600">
-            I agree to the <span className="text-blue-600 underline cursor-pointer">terms & conditions</span>
+            I agree to the <span className="text-red-500 underline cursor-pointer">terms & conditions</span>
           </Label>
         </div>
 
         <Button
           type="submit"
-          className="w-full h-12 bg-green-400 hover:bg-green-500 text-white font-medium rounded-md"
+          className="w-full h-12 bg-[#A8C2A3] hover:bg-green-500 text-white font-medium rounded-md"
           disabled={!formData.agreeToTerms}
         >
           Continue

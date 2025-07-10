@@ -21,6 +21,7 @@ export interface BasicFormData {
 export interface ProfessionalFormData {
   profilePicture: File | null
   gender: string
+  certificationsName:string
   dateOfBirth: string
   specialization: string
   description: string
@@ -39,7 +40,9 @@ export interface ProfessionalFormData {
     skillName: string
     description: string
   }>
+  
   certifications: File[]
+  
 }
 
 export default function Home() {
@@ -58,7 +61,7 @@ export default function Home() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-md mx-auto">
+        <div className="max-w-5xl mx-auto">
           {currentStep === 1 ? (
             <BasicInfoForm onSubmit={handleBasicFormSubmit} />
           ) : (

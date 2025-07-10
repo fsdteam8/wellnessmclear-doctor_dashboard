@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,12 +14,19 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Upload, Plus, Calendar } from "lucide-react"
-import type { BasicFormData, ProfessionalFormData } from "../page"
 import Image from "next/image"
+import type { BasicFormData, ProfessionalFormData } from "../page"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 interface ProfessionalInfoFormProps {
   basicData: BasicFormData
   onBack: () => void
+}
+
+interface Service {
+  _id: number,
+  title: string
 }
 
 export default function ProfessionalInfoForm({
@@ -35,34 +42,18 @@ export default function ProfessionalInfoForm({
     qualification: "",
     fieldOfExperiences: "",
     yearsOfExperience: "",
-    availability: [
-      {
-        day: "Monday",
-        slots: [
-          { startTime: "11:00 AM", endTime: "01:00 PM" },
-          { startTime: "03:00 PM", endTime: "06:00 PM" },
-        ],
-      },
-      {
-        day: "Wednesday",
-        slots: [{ startTime: "10:00 AM", endTime: "02:00 PM" }],
-      },
-    ],
-    servicesOffered: "6864cfe5898d9331b5424aa3",
-    skills: [
-      {
-        skillName: "Nutrition Coaching",
-        description: "Helping clients with diet and meal plans.",
-      },
-      {
-        skillName: "Fitness Training",
-        description: "Providing personalized fitness guidance.",
-      },
-    ],
+    availability: [],
+    servicesOffered: "",
+    skills: [],
+    certificationsName: "",
     certifications: [],
   })
 
+  const router = useRouter()
+
   const [profilePreview, setProfilePreview] = useState<string | null>(null)
+  const [certificationFilesPreview, setCertificationFilesPreview] = useState<string[]>([])
+
 
   const submitMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -78,11 +69,12 @@ export default function ProfessionalInfoForm({
 
       return response.json()
     },
-    onSuccess: () => {
-      alert("Registration successful!")
+    onSuccess: (res) => {
+      toast.success(res.message || "Registration successful!")
+      router.push("/login")
     },
-    onError: (error) => {
-      alert("Registration failed: " + error.message)
+    onError: (error: Error) => {
+      toast.error( "Registration failed: " + error.message)
     },
   })
 
@@ -106,17 +98,34 @@ export default function ProfessionalInfoForm({
     submitData.append("servicesOffered", formData.servicesOffered)
     submitData.append("availability", JSON.stringify(formData.availability))
     submitData.append("skills", JSON.stringify(formData.skills))
+    submitData.append("certifications", formData.certificationsName)
 
     if (formData.profilePicture) {
-      submitData.append("profilePicture", formData.profilePicture)
+      submitData.append("profileImage", formData.profilePicture)
     }
 
     formData.certifications.forEach((file) => {
-      submitData.append("certifications", file)
+      submitData.append("certificationFiles", file)
     })
 
     submitMutation.mutate(submitData)
   }
+
+
+  const { data } = useQuery({
+    queryKey: ["services"],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/service/all-services`, {
+        headers: {
+          "Content-Type": "application/json",
+          // Authorization: `Bearer ${users?.accessToken}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user");
+      return res.json();
+    },
+    // enabled: !!users?.id,
+  });
 
   const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -147,8 +156,32 @@ export default function ProfessionalInfoForm({
     }))
   }
 
+  const addAvailability = () => {
+    setFormData((prev) => ({
+      ...prev,
+      availability: [...prev.availability, { day: "", slots: [{ startTime: "", endTime: "" }] }],
+    }))
+  }
+
+  const handleAvailabilityChange = (
+    index: number,
+    field: "day" | "slots",
+    value: string | { startTime: string; endTime: string }[]
+  ) => {
+    const newAvailability = [...formData.availability]
+    newAvailability[index] = { ...newAvailability[index], [field]: value }
+    setFormData((prev) => ({ ...prev, availability: newAvailability }))
+  }
+
+  const addSlot = (availabilityIndex: number) => {
+    const newAvailability = [...formData.availability]
+    newAvailability[availabilityIndex].slots.push({ startTime: "", endTime: "" })
+    setFormData((prev) => ({ ...prev, availability: newAvailability }))
+  }
+
+
   return (
-    <div className="bg-white rounded-lg shadow-sm p-8">
+    <div className=" bg-white w-full rounded-lg shadow-sm p-8">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Profile Picture */}
         <div>
@@ -161,6 +194,8 @@ export default function ProfessionalInfoForm({
                 src={profilePreview}
                 alt="Profile"
                 className="w-20 h-20 mx-auto rounded-full object-cover mb-2"
+                width={80}
+                height={80}
               />
             ) : (
               <>
@@ -187,7 +222,7 @@ export default function ProfessionalInfoForm({
             value={formData.gender}
             onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value }))}
           >
-            <SelectTrigger className="h-12 border-gray-300">
+            <SelectTrigger className="h-12 w-full border-gray-300">
               <SelectValue placeholder="Select Gender" />
             </SelectTrigger>
             <SelectContent>
@@ -248,21 +283,21 @@ export default function ProfessionalInfoForm({
           <Input
             value={formData.fieldOfExperiences}
             onChange={(e) => setFormData((prev) => ({ ...prev, fieldOfExperiences: e.target.value }))}
-            className="h-12 border-gray-300"
+            className="h-12 border-gray-300 w-full"
           />
         </div>
 
         {/* Years Of Experience */}
-        <div>
+        <div >
           <Label className="block mb-2 text-sm font-medium text-gray-700">Years Of Experience</Label>
           <Select
             value={formData.yearsOfExperience}
             onValueChange={(value) => setFormData((prev) => ({ ...prev, yearsOfExperience: value }))}
           >
-            <SelectTrigger className="h-12 border-gray-300">
+            <SelectTrigger className="h-12 w-full border-gray-300">
               <SelectValue placeholder="Select years of experience" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent >
               {Array.from({ length: 50 }, (_, i) => (
                 <SelectItem key={i + 1} value={(i + 1).toString()}>
                   {i + 1} {i + 1 === 1 ? "year" : "years"}
@@ -282,29 +317,177 @@ export default function ProfessionalInfoForm({
                   placeholder="Skill Name"
                   value={skill.skillName}
                   onChange={(e) => handleSkillChange(index, "skillName", e.target.value)}
+                  className="h-12 border-gray-300"
                 />
                 <Input
                   placeholder="Skill Description"
                   value={skill.description}
                   onChange={(e) => handleSkillChange(index, "description", e.target.value)}
+                  className="h-12 border-gray-300"
                 />
               </div>
             ))}
-            <Button type="button" variant="outline" onClick={addSkill} className="w-full">
+            <Button type="button" variant="outline" onClick={addSkill} className="w-full h-12">
               <Plus className="w-4 h-4 mr-2" />
               Add Skill
             </Button>
           </div>
         </div>
 
+        {/* Availability */}
+        <div>
+          <Label className="mb-2 block text-sm font-medium text-gray-700">Availability</Label>
+          <div className="space-y-4">
+            {formData.availability.map((avail, index) => (
+              <div key={index} className="space-y-2">
+                <Select
+                  value={avail.day}
+                  onValueChange={(value) => handleAvailabilityChange(index, "day", value)}
+                >
+                  <SelectTrigger className="h-12 border-gray-300">
+                    <SelectValue placeholder="Select Day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(
+                      (day) => (
+                        <SelectItem key={day} value={day}>
+                          {day}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+                {avail.slots.map((slot, slotIndex) => (
+                  <div key={slotIndex} className="grid grid-cols-2 gap-4">
+                    <Input
+                      placeholder="Start Time (e.g., 11:00 AM)"
+                      value={slot.startTime}
+                      onChange={(e) => {
+                        const newSlots = [...avail.slots]
+                        newSlots[slotIndex] = { ...newSlots[slotIndex], startTime: e.target.value }
+                        handleAvailabilityChange(index, "slots", newSlots)
+                      }}
+                      className="h-12 border-gray-300"
+                    />
+                    <Input
+                      placeholder="End Time (e.g., 01:00 PM)"
+                      value={slot.endTime}
+                      onChange={(e) => {
+                        const newSlots = [...avail.slots]
+                        newSlots[slotIndex] = { ...newSlots[slotIndex], endTime: e.target.value }
+                        handleAvailabilityChange(index, "slots", newSlots)
+                      }}
+                      className="h-12 border-gray-300"
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => addSlot(index)}
+                  className="w-full h-12"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Slot
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" onClick={addAvailability} className="w-full h-12">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Availability
+            </Button>
+          </div>
+        </div>
+
+        <div>
+          <Label className="mb-2 block text-sm font-medium text-gray-700">Service</Label>
+          <Select
+            value={formData.servicesOffered}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, servicesOffered: value }))}
+          >
+            <SelectTrigger className="h-12 w-full border-gray-300">
+              <SelectValue placeholder="Select Gender" />
+            </SelectTrigger>
+            <SelectContent>
+              {data?.data?.map((service: Service, i: number) => (
+                <SelectItem key={service._id || i} value={service._id.toString()}>
+                  {service.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Certifications */}
+
+
         <div>
           <Label className="block mb-3 text-sm font-medium text-gray-700">Certifications</Label>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-500">Upload your certifications</p>
             <label className="inline-block mt-2 cursor-pointer text-blue-500 hover:underline">
-              Browse files
+              Browse
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  setFormData((prev) => ({ ...prev, certifications: files }))
+                  setCertificationFilesPreview([]) // reset before new
+                  files.forEach((file) => {
+                    if (file.type.startsWith("image/")) {
+                      const reader = new FileReader()
+                      reader.onload = (event) => {
+                        if (event.target?.result) {
+                          setCertificationFilesPreview((prev) => [...prev, event.target!.result as string])
+                        }
+                      }
+                      reader.readAsDataURL(file)
+                    } else {
+                      setCertificationFilesPreview((prev) => [...prev, file.name])
+                    }
+                  })
+                }}
+                className="hidden"
+              />
+            </label>
+
+            {/* Preview Section */}
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              {certificationFilesPreview.map((preview, idx) =>
+                preview.startsWith("data:image") ? (
+                  <Image
+                    key={idx}
+                    src={preview}
+                    alt={`Certification Preview ${idx + 1}`}
+                    width={100}
+                    height={100}
+                    className="object-cover rounded border"
+                  />
+                ) : (
+                  <div
+                    key={idx}
+                    className="text-sm text-gray-600 bg-gray-100 p-2 rounded border"
+                  >
+                    📄 {preview}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+
+
+        {/* <div>
+          <Label className="block mb-3 text-sm font-medium text-gray-700">Certifications</Label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500"></p>
+            <label className="inline-block mt-2 cursor-pointer text-blue-500 hover:underline">
+              Browse
               <input
                 type="file"
                 multiple
@@ -317,17 +500,28 @@ export default function ProfessionalInfoForm({
               />
             </label>
           </div>
+        </div> */}
+        {/* Certifications Name */}
+        <div>
+          <Label className="block mb-2 text-sm font-medium text-gray-700">Certifications Name</Label>
+          <Input
+            value={formData.certificationsName}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, certificationsName: e.target.value }))
+            }
+            className="min-h-[50px] border-gray-300 resize-none"
+          />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4">
-          <Button type="button" variant="outline" onClick={onBack} className="w-full h-12">
+        <div className="flex gap-4 justify-center">
+          <Button type="button" variant="outline" onClick={onBack} className="">
             Back
           </Button>
           <Button
             type="submit"
             disabled={submitMutation.isPending}
-            className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white"
+            className=" bg-blue-500 hover:bg-blue-600 text-white "
           >
             {submitMutation.isPending ? "Submitting..." : "Submit"}
           </Button>

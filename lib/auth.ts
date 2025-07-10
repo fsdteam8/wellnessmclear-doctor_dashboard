@@ -30,10 +30,11 @@ export const authOptions: NextAuthOptions = {
               password: credentials.password,
             }),
           });
+          console.log(res)
 
           const result = await res.json();
-
-          if (!res.ok || !result.status || !result.data?.coach) {
+            console.log(result.message)
+          if (!res.ok || !result.data?.coach) {
             throw new Error(result?.message || "Invalid login credentials");
           }
 
@@ -51,7 +52,11 @@ export const authOptions: NextAuthOptions = {
           };
         } catch (error) {
           console.error("Login error:", error);
-          throw new Error("Login failed. Please check your credentials.");
+          if (error instanceof Error) {
+            throw new Error(error.message || "Login failed. Please check your credentials.");
+          } else {
+            throw new Error("Login failed. Please check your credentials.");
+          }
         }
       },
     }),

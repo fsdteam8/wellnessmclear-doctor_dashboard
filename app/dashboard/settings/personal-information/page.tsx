@@ -7,17 +7,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { UserResponse } from "@/types/profiledatatype"
+import { CoachResponse } from "@/types/profiledatatype"
 
 export default function PersonalInformation() {
   // const TOKEN = session?.data?.user?.accessToken;
   const session = useSession();
   const users = session?.data?.user;
 
-  const { data, isLoading } = useQuery<UserResponse>({
+  const { data, isLoading } = useQuery<CoachResponse>({
     queryKey: ["user", users?.id],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${users?.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/${users?.id}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${users?.accessToken}`,

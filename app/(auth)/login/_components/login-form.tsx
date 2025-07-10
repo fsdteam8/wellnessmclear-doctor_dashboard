@@ -56,7 +56,7 @@ export default function LoginForm() {
       if (!res?.ok) {
         // Handle error case
         setIsLoading(false);
-        toast.error("Login failed. Please check your credentials and try again.");
+        toast.error(res?.error || "Login failed. Please check your credentials and try again.");
         console.error("Login failed:", res?.error);
       }
 

@@ -22,7 +22,7 @@ export default function OtpFrom() {
   const otpMutation = useMutation({
     mutationFn: async (bodyData: { email: string; otp: string }) => {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/verify-code`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/verify-code`,
         {
           method: "POST",
           headers: {

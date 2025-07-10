@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { UserResponse } from "@/types/profiledatatype";
+import { CoachResponse } from "@/types/profiledatatype";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 
@@ -9,7 +9,7 @@ export function Header() {
   const { data: session } = useSession()
   const users = session?.user;
 
-  const { data } = useQuery<UserResponse>({
+  const { data } = useQuery<CoachResponse>({
     queryKey: ["user", users?.id],
     queryFn: async () => {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${users?.id}`, {
