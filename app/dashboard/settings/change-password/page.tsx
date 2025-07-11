@@ -71,8 +71,8 @@ export default function ChangePassword() {
       const token = session?.user?.accessToken
 
       const payload = {
-        oldPassword: data.currentPassword,
-        newPassword: data.newPassword,
+        oldPassword: String(data.currentPassword),
+        newPassword: String(data.newPassword),
       }
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/change-password`, {

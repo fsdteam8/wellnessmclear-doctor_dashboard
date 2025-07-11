@@ -72,7 +72,7 @@ export default function PersonalInformation() {
             </div>
           </div>
           <Link href="/dashboard/settings/personal-information/edit">
-            <Button className="bg-green-600 hover:bg-green-700">Update Profile</Button>
+            <Button className="bg-[#A8C2A3]  hover:bg-[#72a867] cursor-pointer ">Update Profile</Button>
           </Link>
         </div>
 

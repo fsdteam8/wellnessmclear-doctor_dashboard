@@ -288,7 +288,7 @@ export default function EditPersonalInformation() {
       const formData = new FormData();
       formData.append("profileImage", file);
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/upload-avatar/${userSession!.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/${userSession!.id}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${userSession!.accessToken}`,
@@ -425,7 +425,7 @@ export default function EditPersonalInformation() {
               else toast({ title: "Please select an image first." });
             }}
             disabled={avatarMutation.isPending}
-            className="bg-blue-500 hover:bg-blue-600 text-white h-12"
+            className="bg-[#A8C2A3] cursor-pointer hover:bg-[#7ba772] text-white h-12"
           >
             {avatarMutation.isPending ? "Uploading..." : "Update Avatar"}
           </Button>
@@ -758,14 +758,14 @@ export default function EditPersonalInformation() {
               variant="outline"
               onClick={handleCancel}
               disabled={updateMutation.isPending}
-              className="h-12"
+              className="h-12 cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={updateMutation.isPending}
-              className="bg-blue-500 hover:bg-blue-600 text-white h-12"
+              className="bg-[#A8C2A3] cursor-pointer hover:bg-[#a8c2a3dc] text-white h-12"
             >
               {updateMutation.isPending ? "Saving..." : "Save"}
             </Button>

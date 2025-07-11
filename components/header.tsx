@@ -12,7 +12,7 @@ export function Header() {
   const { data } = useQuery<CoachResponse>({
     queryKey: ["user", users?.id],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${users?.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/${users?.id}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${users?.accessToken}`,

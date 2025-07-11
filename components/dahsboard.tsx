@@ -1,15 +1,65 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { fetchDashboardStats } from "@/lib/api"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { TrendingUp, Package } from "lucide-react"
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  RadialBarChart,
+  RadialBar,
+  Legend,
+} from "recharts"
+import { useSession } from "next-auth/react"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+
+interface CoachRevenueDay {
+  date: string
+  revenue: number
+}
+interface CoachRevenueWeek {
+  week: string
+  revenue: number
+}
+interface CoachRevenueMonth {
+  month: string
+  revenue: number
+}
 
 export default function Dashboard() {
+  const session = useSession()
+  const id = session.data?.user.id
+  const [range, setRange] = useState<"day" | "week" | "month">("day")
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
-    queryFn: fetchDashboardStats,
+    queryFn: async () => {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/payment/coach/${id}/earnings`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.data?.user.accessToken}`,
+          },
+        }
+      )
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch dashboard stats")
+      }
+
+      return res.json()
+    },
   })
 
   if (isLoading) {
@@ -28,73 +78,108 @@ export default function Dashboard() {
 
   if (!stats) return null
 
+  const totalRevenue = stats.summary.totalCoachEarning ?? 0
+  const totalBooking = stats.summary.totalBookings ?? 0
+  const newBookings = stats.summary.newBookings ?? {
+    thisDay: 0,
+    thisWeek: 0,
+    thisMonth: 0,
+    thisYear: 0,
+  }
+
+  const getChartData = () => {
+    if (range === "day") {
+      return stats.coachRevenue.day.map((item: CoachRevenueDay) => ({
+        label: item.date,
+        revenue: item.revenue,
+      }))
+    }
+    if (range === "week") {
+      return stats.coachRevenue.week.map((item: CoachRevenueWeek) => ({
+        label: item.week,
+        revenue: item.revenue,
+      }))
+    }
+    if (range === "month") {
+      return stats.coachRevenue.month.map((item: CoachRevenueMonth) => ({
+        label: item.month,
+        revenue: item.revenue,
+      }))
+    }
+    return []
+  }
+
+  const chartData = getChartData()
+
+  const newBookingsData = [
+    { name: "Today", value: newBookings.thisDay, fill: "#A8C2A3" },
+    { name: "This Week", value: newBookings.thisWeek, fill: "#C6D2FD" },
+    { name: "This Month", value: newBookings.thisMonth, fill: "#CBA0E3" },
+  ]
+
   return (
     <div className="p-6 space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
         <p className="text-sm text-gray-500">Dashboard</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm text-gray-600">Total Revenue</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-green-600">${totalRevenue.toLocaleString()}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Booking</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm text-gray-600">Total Booking</CardTitle>
             <Package className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalBooking.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-blue-600">{totalBooking}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Ratio Chart */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">My Revenue Ratio</CardTitle>
-            <div className="flex gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                <span className="text-gray-600">This Month</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                <span className="text-gray-600">Last Month</span>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Revenue Report */}
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="text-lg font-semibold">Revenue Report</CardTitle>
+            <div className="flex gap-2">
+              {(["day", "week", "month"] as const).map((type) => (
+                <Button
+                  key={type}
+                  variant={range === type ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setRange(type)}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Button>
+              ))}
             </div>
           </CardHeader>
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.revenueRatio}>
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#6B7280" }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#6B7280" }} />
-                  <Line
-                    type="monotone"
-                    dataKey="thisMonth"
-                    stroke="#8B5CF6"
-                    strokeWidth={2}
-                    dot={{ fill: "#8B5CF6", strokeWidth: 2, r: 4 }}
+                <LineChart data={chartData}>
+                  <XAxis dataKey="label" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: number) => [`$${value}`, "Revenue"]}
+                    labelFormatter={(label: string) => `${label}`}
                   />
                   <Line
                     type="monotone"
-                    dataKey="lastMonth"
-                    stroke="#9CA3AF"
+                    dataKey="revenue"
+                    stroke="#8B5CF6"
                     strokeWidth={2}
-                    dot={{ fill: "#9CA3AF", strokeWidth: 2, r: 4 }}
+                    dot={{ r: 4, fill: "#8B5CF6" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -102,70 +187,41 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Booking Report */}
+        {/* New Booking Report */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Total New Booking Report</CardTitle>
-            <button className="text-sm text-blue-600 hover:underline">View Details</button>
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <CardTitle>New Booking Report</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-sm text-gray-600">This day</span>
-                </div>
-                <span className="font-semibold">{stats.bookingReport.thisDay}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span className="text-sm text-gray-600">This Week</span>
-                </div>
-                <span className="font-semibold">{stats.bookingReport.thisWeek}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                  <span className="text-sm text-gray-600">This Month</span>
-                </div>
-                <span className="font-semibold">{stats.bookingReport.thisMonth}</span>
-              </div>
-            </div>
-            <div className="mt-6 h-32 flex items-center justify-center">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full border-8 border-gray-200"></div>
-                <div className="absolute inset-0 w-24 h-24 rounded-full border-8 border-green-500 border-t-transparent animate-spin"></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Booking Session */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Booking Session</CardTitle>
-            <button className="text-sm text-blue-600 hover:underline">View Details</button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 mb-4">
-              {stats.bookingSession.categories.map((category, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }}></div>
-                    <span className="text-sm text-gray-600">{category.name}</span>
-                  </div>
-                  <span className="font-semibold">{category.percentage}%</span>
-                </div>
-              ))}
-            </div>
-            <div className="h-32 flex items-center justify-center">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full border-8 border-gray-200"></div>
-                <div className="absolute inset-0 w-24 h-24 rounded-full border-8 border-purple-500 border-t-transparent"></div>
-                <div className="absolute inset-2 w-20 h-20 rounded-full border-6 border-blue-500 border-t-transparent"></div>
-                <div className="absolute inset-4 w-16 h-16 rounded-full border-4 border-green-500 border-t-transparent"></div>
-              </div>
+          <CardContent className="pb-0">
+            <div className="flex justify-center">
+              <ResponsiveContainer width={320} height={300}>
+                <RadialBarChart
+                  innerRadius="30%"
+                  outerRadius="100%"
+                  data={newBookingsData}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  <RadialBar
+                    label={{ position: "insideStart", fill: "#333", fontSize: 12 }}
+                    background
+                    dataKey="value"
+                  />
+                  <Legend
+                    iconSize={10}
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    wrapperStyle={{
+                      marginTop: 20,
+                    }}
+                  />
+                  <Tooltip formatter={(value: number) => [`${value} bookings`, ""]} />
+                </RadialBarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>

@@ -159,14 +159,15 @@ export default function LoginForm() {
                 </div>
               )}
             />
-            {/* Uncomment if you add Forgot Password page */}
-            {/* <Link
-              href="/reset-request"
+             {/* Uncomment if you add Forgot Password page */}
+            <Link
+              href="/forget-password"
               className="text-sm font-medium text-[#8C311ECC] hover:text-[#8C311ECC]/60"
             >
               Forgot password?
-            </Link> */}
+            </Link> 
           </div>
+        
           <Button type="submit" className="w-full min-h-[45px]" disabled={loading}>
             {loading ? "Signing In..." : "Sign In"}
           </Button>
@@ -182,6 +183,7 @@ export default function LoginForm() {
           Sign Up Here
         </Link>
       </div>
+     
     </>
   );
 }
