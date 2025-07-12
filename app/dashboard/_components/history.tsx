@@ -1,20 +1,47 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { fetchBookingHistory } from "@/lib/api"
+import { useSession } from "next-auth/react"
+import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { CoachPaymentReportResponse } from "@/types/walletDataType"
+import Image from "next/image"
 
 export default function BookingHistory() {
-  const { data: bookings, isLoading } = useQuery({
-    queryKey: ["booking-history"],
-    queryFn: fetchBookingHistory,
+  const session = useSession()
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 6
+
+  const { data, isLoading } = useQuery<CoachPaymentReportResponse>({
+    queryKey: ["wallet"],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/payment/booking/earnings`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.data?.user?.accessToken}`,
+        },
+      })
+      if (!res.ok) throw new Error("Failed to fetch earnings data")
+      return res.json()
+    },
+    enabled: !!session.data?.user?.accessToken,
   })
 
-  if (isLoading) {
+  const totalItems = data?.payments.length || 0
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const currentPayments = data?.payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || []
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
+  if (isLoading || !data) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -34,7 +61,7 @@ export default function BookingHistory() {
       </div>
 
       {/* Table */}
-      <div className=" rounded-lg ">
+      <div className="rounded-lg">
         <Table>
           <TableHeader>
             <TableRow className="border-b border-t">
@@ -45,34 +72,41 @@ export default function BookingHistory() {
               <TableHead className="font-semibold text-gray-900">Start Time</TableHead>
               <TableHead className="font-semibold text-gray-900">End Time</TableHead>
               <TableHead className="font-semibold text-gray-900">Date</TableHead>
-              <TableHead className="font-semibold text-gray-900">Action</TableHead>
+              <TableHead className="font-semibold text-gray-900">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bookings?.map((booking) => (
-              <TableRow key={booking.id} className="border-b">
+            {currentPayments.map(({ booking, paymentId }) => (
+              <TableRow key={paymentId} className="border-b">
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                      <div className="w-6 h-6 bg-orange-400 rounded"></div>
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100">
+                      <Image
+                        src={booking.service.icon}
+                        alt="Service Icon"
+                        className="w-full h-full object-cover"
+                        width={40}
+                        height={40}
+                      />
                     </div>
-                    <span className="font-medium">{booking.serviceName}</span>
+                    <span className="font-medium">{booking.service.description}</span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={booking.userAvatar || "/placeholder.svg"} alt={booking.userName} />
-                      <AvatarFallback>JS</AvatarFallback>
+                      <AvatarImage src={"/placeholder.svg"} alt={booking.user.firstName} />
+                      <AvatarFallback>{booking.user.firstName?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <span>{booking.userName}</span>
+                    <span>{booking.user.firstName}</span>
                   </div>
                 </TableCell>
-                <TableCell className="font-medium">${booking.price.toFixed(2)}</TableCell>
-                <TableCell>{booking.coachName}</TableCell>
-                <TableCell>{booking.startTime}</TableCell>
-                <TableCell>{booking.endTime}</TableCell>
-                <TableCell>{booking.date}</TableCell>
+                <TableCell className="font-medium">${booking.service.price.toFixed(2)}</TableCell>
+                <TableCell>{booking.coach.firstName}</TableCell>
+                <TableCell>{booking.availability[0]?.slots[0]?.startTime || "-"}</TableCell>
+                <TableCell>{booking.availability[0]?.slots[0]?.endTime || "-"}</TableCell>
+                {/* Fix date formatting to ISO string */}
+                <TableCell>{booking.date ? booking.date.slice(0, 10) : "-"}</TableCell>
                 <TableCell>
                   <Badge
                     variant={booking.status === "Completed" ? "default" : "secondary"}
@@ -92,27 +126,36 @@ export default function BookingHistory() {
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-6 py-4 border-t">
-          <p className="text-sm text-gray-600">Showing 1 to 5 of 12 results</p>
+          <p className="text-sm text-gray-600">
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} results
+          </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700">
-              1
-            </Button>
-            <Button variant="outline" size="sm">
-              2
-            </Button>
-            <Button variant="outline" size="sm">
-              3
-            </Button>
-            <Button variant="outline" size="sm">
-              ...
-            </Button>
-            <Button variant="outline" size="sm">
-              8
-            </Button>
-            <Button variant="outline" size="sm">
+            {[...Array(totalPages)].map((_, i) => (
+              <Button
+                key={i + 1}
+                variant={currentPage === i + 1 ? "default" : "outline"}
+                size="sm"
+                onClick={() => goToPage(i + 1)}
+                className={currentPage === i + 1 ? "bg-green-600 hover:bg-green-700" : ""}
+              >
+                {i + 1}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

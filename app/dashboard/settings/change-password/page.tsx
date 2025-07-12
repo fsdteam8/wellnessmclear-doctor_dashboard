@@ -14,7 +14,7 @@ import { Eye, EyeOff } from "lucide-react"
 // import { toast } from "@/hooks/use-toast"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
-import { UserResponse } from "@/types/profiledatatype"
+import { CoachResponse } from "@/types/profiledatatype"
 
 const passwordSchema = z
   .object({
@@ -49,10 +49,10 @@ export default function ChangePassword() {
 
   const users = session?.user;
 
-  const { data } = useQuery<UserResponse>({
+  const { data } = useQuery<CoachResponse>({
     queryKey: ["user", users?.id],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${users?.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/${users?.id}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${users?.accessToken}`,
@@ -71,11 +71,11 @@ export default function ChangePassword() {
       const token = session?.user?.accessToken
 
       const payload = {
-        oldPassword: data.currentPassword,
-        newPassword: data.newPassword,
+        oldPassword: String(data.currentPassword),
+        newPassword: String(data.newPassword),
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/change-password`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +99,7 @@ export default function ChangePassword() {
     },
     onError: (err: Error) => {
       console.log(err)
-      toast.success( "Failed to change password")
+      toast.success("Failed to change password")
     },
   })
 
