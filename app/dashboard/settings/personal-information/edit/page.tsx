@@ -201,24 +201,24 @@ export default function EditPersonalInformation() {
         : "";
 
       reset({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        phoneNumber: user.phoneNumber || "",
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+        phoneNumber: user?.phoneNumber || "",
         dateOfBirth: dob,
-        address: user.address || "",
+        address: user?.address || "",
         gender: genderValue,
-        specialization: user.specialization || "",
-        description: user.description || "",
-        qualification: user.qualification || "",
-        fieldOfExperiences: user.fieldOfExperiences || "",
+        specialization: user?.specialization || "",
+        description: user?.description || "",
+        qualification: user?.qualification || "",
+        fieldOfExperiences: user?.fieldOfExperiences || "",
         yearsOfExperience: years,
-        servicesOffered: user.servicesOffered?._id ? user.servicesOffered._id.toString() : "",
-        skills: user.skills?.length ? user.skills : [{ skillName: "", description: "" }],
-        availability: user.availability?.length
-          ? user.availability.map((avail) => ({
-            day: avail.day || "",
-            slots: avail.slots?.length
-              ? avail.slots.map((slot) => ({
+        servicesOffered: user?.servicesOffered?._id ? user?.servicesOffered._id.toString() : "",
+        skills: user?.skills?.length ? user?.skills : [{ skillName: "", description: "" }],
+        availability: user?.availability?.length
+          ? user?.availability.map((avail) => ({
+            day: avail?.day || "",
+            slots: avail?.slots?.length
+              ? avail?.slots.map((slot) => ({
                 startTime: normalizeTime(slot.startTime) || "",
                 endTime: normalizeTime(slot.endTime) || "",
               }))
@@ -252,7 +252,10 @@ export default function EditPersonalInformation() {
       if (formData.servicesOffered) submitData.append("servicesOffered", formData.servicesOffered);
       if (formData.skills?.length) submitData.append("skills", JSON.stringify(formData.skills));
       if (formData.availability?.length) submitData.append("availability", JSON.stringify(formData.availability));
-      if (formData.certifications?.length) submitData.append("certifications", JSON.stringify(formData.certifications));
+      if (formData.certifications?.length) {
+        const certificationsText = formData.certifications.map(cert => cert.name).join(", ");
+        submitData.append("certifications", certificationsText);
+      }
       certificationFiles.forEach((file) => submitData.append("certificationFiles", file));
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/${userSession!.id}`, {
@@ -701,6 +704,7 @@ export default function EditPersonalInformation() {
                   </div>
                 ))}
                 <Button
+                  hidden
                   type="button"
                   variant="outline"
                   onClick={() => addCertification({ name: "" })}

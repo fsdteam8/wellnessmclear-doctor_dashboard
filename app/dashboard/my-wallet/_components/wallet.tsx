@@ -54,10 +54,10 @@ export default function MyWallet() {
     )
   }
 
-  const totalItems = data.payments.length
+  const totalItems = data?.payments.length
   const totalPages = Math.ceil(totalItems / itemsPerPage)
   const startIdx = (currentPage - 1) * itemsPerPage
-  const currentPayments = data.payments.slice(startIdx, startIdx + itemsPerPage)
+  const currentPayments = data?.payments.slice(startIdx, startIdx + itemsPerPage)
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -97,35 +97,36 @@ export default function MyWallet() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentPayments.map((payment) => {
-              const { booking } = payment
-              const { service, user } = booking
+            {currentPayments?.map((payment) => {
+              if (!payment?.booking) return null
+              const { service, user } = payment.booking
+
               return (
-                <TableRow key={payment.paymentId} className="border-b border-[#B6B6B6]">
+                <TableRow key={payment?.paymentId} className="border-b border-[#B6B6B6]">
                   <TableCell className="font-medium py-[30px] flex items-center gap-3">
                     <Image
-                      src={service.icon}
+                      src={service?.icon || "https://placehold.co/600x400"}
                       alt="Service Icon"
                       width={40}
                       height={40}
                       className="rounded-md object-cover"
                     />
-                    <span>{service.description}</span>
+                    <span>{service?.title}</span>
                   </TableCell>
                   <TableCell className="font-medium py-[30px]">
-                    ${service.price}
+                    ${service?.price}
                   </TableCell>
                   <TableCell className="py-[30px] flex items-center gap-3">
                     <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold">
-                      {user.firstName?.[0]?.toUpperCase()}
+                      {user?.firstName?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <div className="font-medium">{user.firstName}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
+                      <div className="font-medium">{user?.firstName}</div>
+                      <div className="text-sm text-gray-500">{user?.email}</div>
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-medium py-[30px]">
-                    ${payment.coachEarning.toFixed(2)}
+                    ${payment?.coachEarning?.toFixed(2)}
                   </TableCell>
                 </TableRow>
               )
@@ -155,7 +156,7 @@ export default function MyWallet() {
                   variant={currentPage === pageNum ? "default" : "outline"}
                   size="sm"
                   onClick={() => goToPage(pageNum)}
-                  className={currentPage === pageNum ? "bg-green-600 hover:bg-green-700" : ""}
+                  className={currentPage === pageNum ? "bg-[#A8C2A3] cursor-pointer " : ""}
                 >
                   {pageNum}
                 </Button>
