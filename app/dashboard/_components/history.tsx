@@ -12,7 +12,7 @@ import { CoachPaymentReportResponse } from "@/types/walletDataType"
 import Image from "next/image"
 
 export default function BookingHistory() {
-  const session = useSession()
+  const { data: sessionData, status } = useSession()
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 6
 
@@ -22,18 +22,19 @@ export default function BookingHistory() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/payment/booking/earnings`, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.data?.user?.accessToken}`,
+          Authorization: `Bearer ${sessionData?.user?.accessToken}`,
         },
       })
       if (!res.ok) throw new Error("Failed to fetch earnings data")
       return res.json()
     },
-    enabled: !!session.data?.user?.accessToken,
+    enabled: status === "authenticated",
   })
 
-  const totalItems = data?.payments.length || 0
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const currentPayments = data?.payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || []
+  const payments = data?.payments || []
+  const totalItems = payments.length
+  const totalPages = Math.max(Math.ceil(totalItems / itemsPerPage), 1)
+  const currentPayments = payments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -41,7 +42,7 @@ export default function BookingHistory() {
     }
   }
 
-  if (isLoading || !data) {
+  if (status === "loading" || isLoading || !data) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -76,47 +77,48 @@ export default function BookingHistory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentPayments.map(({ booking, paymentId }) => (
-              <TableRow key={paymentId} className="border-b">
+            {currentPayments.map(({ booking }, index) => (
+              <TableRow key={booking?._id || `booking-row-${index}`}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100">
                       <Image
-                        src={booking.service.icon}
+                        src={booking?.service?.icon || "https://placehold.co/600x400"}
                         alt="Service Icon"
                         className="w-full h-full object-cover"
                         width={40}
                         height={40}
                       />
                     </div>
-                    <span className="font-medium">{booking.service.description}</span>
+                    <span className="font-medium">{booking?.service?.title}</span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={"/placeholder.svg"} alt={booking.user.firstName} />
-                      <AvatarFallback>{booking.user.firstName?.[0]?.toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={"/placeholder.svg"} alt={booking?.user?.firstName} />
+                      <AvatarFallback>{booking?.user?.firstName?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <span>{booking.user.firstName}</span>
+                    <span>{booking?.user?.firstName}</span>
                   </div>
                 </TableCell>
-                <TableCell className="font-medium">${booking.service.price.toFixed(2)}</TableCell>
-                <TableCell>{booking.coach.firstName}</TableCell>
-                <TableCell>{booking.availability[0]?.slots[0]?.startTime || "-"}</TableCell>
-                <TableCell>{booking.availability[0]?.slots[0]?.endTime || "-"}</TableCell>
-                {/* Fix date formatting to ISO string */}
-                <TableCell>{booking.date ? booking.date.slice(0, 10) : "-"}</TableCell>
+                <TableCell className="font-medium">
+                  ${booking?.service?.price?.toFixed(2)}
+                </TableCell>
+                <TableCell>{booking?.coach?.firstName}</TableCell>
+                <TableCell>{booking?.availability?.[0]?.slots?.[0]?.startTime || "-"}</TableCell>
+                <TableCell>{booking?.availability?.[0]?.slots?.[0]?.endTime || "-"}</TableCell>
+                <TableCell>{booking?.date ? booking?.date.slice(0, 10) : "-"}</TableCell>
                 <TableCell>
                   <Badge
-                    variant={booking.status === "Completed" ? "default" : "secondary"}
+                    variant={booking?.status === "Completed" ? "default" : "secondary"}
                     className={
-                      booking.status === "Completed"
+                      booking?.status === "Completed"
                         ? "bg-green-100 text-green-800 hover:bg-green-100"
                         : "bg-purple-100 text-purple-800 hover:bg-purple-100"
                     }
                   >
-                    {booking.status}
+                    {booking?.status}
                   </Badge>
                 </TableCell>
               </TableRow>
@@ -139,17 +141,20 @@ export default function BookingHistory() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            {[...Array(totalPages)].map((_, i) => (
-              <Button
-                key={i + 1}
-                variant={currentPage === i + 1 ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(i + 1)}
-                className={currentPage === i + 1 ? "bg-green-600 hover:bg-green-700" : ""}
-              >
-                {i + 1}
-              </Button>
-            ))}
+            {Array.from({ length: totalPages }, (_, i) => {
+              const pageNumber = i + 1
+              return (
+                <Button
+                  key={`page-${pageNumber}`}
+                  variant={currentPage === pageNumber ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => goToPage(pageNumber)}
+                  className={currentPage === pageNumber ? "bg-[#A8C2A3] cursor-pointer" : ""}
+                >
+                  {pageNumber}
+                </Button>
+              )
+            })}
             <Button
               variant="outline"
               size="sm"

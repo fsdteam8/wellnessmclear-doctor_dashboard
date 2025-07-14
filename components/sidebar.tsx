@@ -2,19 +2,70 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, History, Wallet, Settings, LogOut } from "lucide-react"
-import { signOut } from "next-auth/react"
+import { LayoutDashboard, History, Wallet, Settings, LogOut, Settings2 } from "lucide-react"
+import { signOut, useSession } from "next-auth/react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { useMutation } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Booking History", href: "/dashboard/booking-history", icon: History },
-  { name: "My Wallet", href: "/dashboard/my-wallet", icon: Wallet },
-  { name: "Setting", href: "/dashboard/settings", icon: Settings },
+  { id: 1, name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { id: 2, name: "Booking History", href: "/dashboard/booking-history", icon: History },
+  { id: 3, name: "My Wallet", href: "/dashboard/my-wallet", icon: Wallet },
+  { id: 4, name: "Setting", href: "/dashboard/settings", icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const session = useSession()
+
+  const [email, setEmail] = useState("")
+  const [open, setOpen] = useState(false)
+
+  const setUpMutaion = useMutation({
+    mutationFn: async (email: string) => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/onboard`,
+        {
+          method: "POST",
+          body: JSON.stringify({ email }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.data?.user.accessToken}`,
+          
+          },
+        }
+
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete practice area");
+      }
+
+    },
+    onSuccess: (res) => {
+      console.log(res)
+      // toast.success("");
+    },
+    onError: (error) => {
+      console.log("Delete failed:", error);
+      toast.error(error.message);
+    },
+  });
+
+
+  const handleSubmit = () => {
+    setUpMutaion.mutate(email)
+    console.log("Submitted Email:", email)
+    setOpen(false)
+  }
+
+
 
   return (
     <div className="w-64 bg-[#2F3E34] min-h-screen flex flex-col">
@@ -33,7 +84,7 @@ export function Sidebar() {
                 : pathname.startsWith(item.href)
 
             return (
-              <li key={item.name}>
+              <li key={item.id}>
                 <Link
                   href={item.href}
                   className={cn(
@@ -47,16 +98,47 @@ export function Sidebar() {
               </li>
             )
           })}
+
+          {/* Setup opens modal */}
+          <li>
+            <button
+              onClick={() => setOpen(true)}
+              className="flex items-center gap-3 px-3 py-4 text-sm font-medium text-white/80 hover:bg-[#A8C2A3] hover:text-white rounded-lg w-full text-left"
+            >
+              <Settings2 className="h-4 w-4" />
+              Setup
+            </button>
+          </li>
         </ul>
       </nav>
 
       {/* Logout */}
       <div className="p-3">
-        <button onClick={()=>signOut({callbackUrl:"/login"})} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-[#5A6D33] hover:text-white rounded-lg transition-colors w-full">
+        <button onClick={() => signOut({ callbackUrl: "/login" })} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-[#5A6D33] hover:text-white rounded-lg transition-colors w-full">
           <LogOut className="h-4 w-4" />
           Log Out
         </button>
       </div>
+
+      {/* Modal */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter your email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Button onClick={handleSubmit} className="w-full">
+              Submit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -141,9 +141,47 @@ export default function EditPersonalInformation() {
       availability: [{ day: "", slots: [{ startTime: "", endTime: "" }] }],
       certifications: [{ name: "" }],
     },
+    resolver: async (data) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errors: any = {};
+      const values = { ...data };
+
+      // Validate availability slots for AM/PM
+      values.availability.forEach((avail, index) => {
+        avail.slots.forEach((slot, slotIndex) => {
+          const startTime = slot.startTime?.trim();
+          const endTime = slot.endTime?.trim();
+
+          if (startTime && !/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(startTime)) {
+            if (!errors.availability) errors.availability = [];
+            if (!errors.availability[index]) errors.availability[index] = { slots: [] };
+            if (!errors.availability[index].slots[slotIndex]) errors.availability[index].slots[slotIndex] = {};
+            errors.availability[index].slots[slotIndex].startTime = {
+              type: "pattern",
+              message: "Start time must include AM or PM (e.g., 10:20 AM)",
+            };
+          }
+
+          if (endTime && !/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(endTime)) {
+            if (!errors.availability) errors.availability = [];
+            if (!errors.availability[index]) errors.availability[index] = { slots: [] };
+            if (!errors.availability[index].slots[slotIndex]) errors.availability[index].slots[slotIndex] = {};
+            errors.availability[index].slots[slotIndex].endTime = {
+              type: "pattern",
+              message: "End time must include AM or PM (e.g., 10:20 PM)",
+            };
+          }
+        });
+      });
+
+      return {
+        values,
+        errors: Object.keys(errors).length > 0 ? errors : {},
+      };
+    },
   });
 
-  const { fields: skills, append: addSkill, } = useFieldArray({
+  const { fields: skills, append: addSkill } = useFieldArray({
     control,
     name: "skills",
   });
@@ -153,7 +191,7 @@ export default function EditPersonalInformation() {
     name: "availability",
   });
 
-  const { fields: certifications, append: addCertification, } = useFieldArray({
+  const { fields: certifications, append: addCertification } = useFieldArray({
     control,
     name: "certifications",
   });
@@ -201,24 +239,24 @@ export default function EditPersonalInformation() {
         : "";
 
       reset({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        phoneNumber: user.phoneNumber || "",
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+        phoneNumber: user?.phoneNumber || "",
         dateOfBirth: dob,
-        address: user.address || "",
+        address: user?.address || "",
         gender: genderValue,
-        specialization: user.specialization || "",
-        description: user.description || "",
-        qualification: user.qualification || "",
-        fieldOfExperiences: user.fieldOfExperiences || "",
+        specialization: user?.specialization || "",
+        description: user?.description || "",
+        qualification: user?.qualification || "",
+        fieldOfExperiences: user?.fieldOfExperiences || "",
         yearsOfExperience: years,
-        servicesOffered: user.servicesOffered?._id ? user.servicesOffered._id.toString() : "",
-        skills: user.skills?.length ? user.skills : [{ skillName: "", description: "" }],
-        availability: user.availability?.length
-          ? user.availability.map((avail) => ({
-            day: avail.day || "",
-            slots: avail.slots?.length
-              ? avail.slots.map((slot) => ({
+        servicesOffered: user?.servicesOffered?._id ? user?.servicesOffered._id.toString() : "",
+        skills: user?.skills?.length ? user?.skills : [{ skillName: "", description: "" }],
+        availability: user?.availability?.length
+          ? user?.availability.map((avail) => ({
+            day: avail?.day || "",
+            slots: avail?.slots?.length
+              ? avail?.slots.map((slot) => ({
                 startTime: normalizeTime(slot.startTime) || "",
                 endTime: normalizeTime(slot.endTime) || "",
               }))
@@ -231,7 +269,6 @@ export default function EditPersonalInformation() {
       if (user.profileImage) {
         setPreviewAvatar(user.profileImage);
       }
-
     }
   }, [user, reset]);
 
@@ -252,7 +289,10 @@ export default function EditPersonalInformation() {
       if (formData.servicesOffered) submitData.append("servicesOffered", formData.servicesOffered);
       if (formData.skills?.length) submitData.append("skills", JSON.stringify(formData.skills));
       if (formData.availability?.length) submitData.append("availability", JSON.stringify(formData.availability));
-      if (formData.certifications?.length) submitData.append("certifications", JSON.stringify(formData.certifications));
+      if (formData.certifications?.length) {
+        const certificationsText = formData.certifications.map(cert => cert.name).join(", ");
+        submitData.append("certifications", certificationsText);
+      }
       certificationFiles.forEach((file) => submitData.append("certificationFiles", file));
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/coach/${userSession!.id}`, {
@@ -653,16 +693,30 @@ export default function EditPersonalInformation() {
                     />
                     {avail.slots.map((slot, slotIndex) => (
                       <div key={slotIndex} className="grid grid-cols-2 gap-4">
-                        <Input
-                          placeholder="Start Time (e.g., 11:00 AM)"
-                          {...register(`availability.${index}.slots.${slotIndex}.startTime`)}
-                          className="h-12 border-gray-300"
-                        />
-                        <Input
-                          placeholder="End Time (e.g., 01:00 PM)"
-                          {...register(`availability.${index}.slots.${slotIndex}.endTime`)}
-                          className="h-12 border-gray-300"
-                        />
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="Start Time (e.g., 11:00 AM)"
+                            {...register(`availability.${index}.slots.${slotIndex}.startTime`)}
+                            className="h-12 border-gray-300"
+                          />
+                          {errors.availability?.[index]?.slots?.[slotIndex]?.startTime && (
+                            <p className="text-red-500 text-sm">
+                              {errors.availability[index].slots[slotIndex].startTime.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="End Time (e.g., 01:00 PM)"
+                            {...register(`availability.${index}.slots.${slotIndex}.endTime`)}
+                            className="h-12 border-gray-300"
+                          />
+                          {errors.availability?.[index]?.slots?.[slotIndex]?.endTime && (
+                            <p className="text-red-500 text-sm">
+                              {errors.availability[index].slots[slotIndex].endTime.message}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <Button
@@ -701,6 +755,7 @@ export default function EditPersonalInformation() {
                   </div>
                 ))}
                 <Button
+                  hidden
                   type="button"
                   variant="outline"
                   onClick={() => addCertification({ name: "" })}

@@ -15,6 +15,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { CoachResponse } from "@/types/profiledatatype"
+import Link from "next/link"
 
 const passwordSchema = z
   .object({
@@ -221,10 +222,12 @@ export default function ChangePassword() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={handleCancel} disabled={passwordMutation.isPending}>
+             <Link href={'/dashboard/settings'}>
+              <Button type="button" className="cursor-pointer" variant="outline" onClick={handleCancel} disabled={passwordMutation.isPending}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={passwordMutation.isPending}>
+             </Link>
+              <Button type="submit" className="bg-[#A8C2A3]  cursor-pointer" disabled={passwordMutation.isPending}>
                 {passwordMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>

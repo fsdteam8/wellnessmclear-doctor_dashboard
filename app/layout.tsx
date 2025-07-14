@@ -1,13 +1,12 @@
+// app/layout.tsx
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
 import AuthSessionProvider from "@/providers/Authprovider"
-import { Toaster } from "sonner"
-// import AuthProvider from "@/components/provider/AuthProvider"
-// import { Sidebar } from "@/components/sidebar"
-// import { Header } from "@/components/header"
+// import { ClientToaster } from "@/components/client-" // <== wrap Toaster here
+import { ClientToaster } from "@/components/client-toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +26,7 @@ export default function RootLayout({
         <Providers>
           <AuthSessionProvider>
             {children}
-            <Toaster/>
+            <ClientToaster />
           </AuthSessionProvider>
         </Providers>
       </body>

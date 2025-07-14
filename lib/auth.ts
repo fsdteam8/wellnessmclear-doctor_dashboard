@@ -51,7 +51,7 @@ export const authOptions: NextAuthOptions = {
             refreshToken,
           };
         } catch (error) {
-          console.error("Login error:", error);
+          console.log("Login error:", error);
           if (error instanceof Error) {
             throw new Error(error.message || "Login failed. Please check your credentials.");
           } else {

@@ -128,7 +128,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm text-gray-600">Total Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <TrendingUp className="h-10 w-10 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">${totalRevenue.toLocaleString()}</div>
@@ -138,7 +138,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm text-gray-600">Total Booking</CardTitle>
-            <Package className="h-4 w-4 text-blue-600" />
+            <Package className="h-10 w-10 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{totalBooking}</div>
@@ -196,7 +196,7 @@ export default function Dashboard() {
           </CardHeader>
 
           <CardContent className="pb-0">
-            <div className="flex justify-center">
+            <div className="flex justify-center ">
               <ResponsiveContainer width={320} height={300}>
                 <RadialBarChart
                   innerRadius="30%"

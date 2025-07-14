@@ -17,11 +17,11 @@ export default function Settings() {
       {/* Settings Options */}
       <div className="space-y-4">
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-0 ">
             <Link href="/dashboard/settings/personal-information">
               <Button
                 variant="ghost"
-                className="w-full justify-between p-4 h-auto font-medium text-left hover:bg-gray-50"
+                className="w-full justify-between cursor-pointer p-4 h-auto font-medium text-left hover:bg-gray-50"
               >
                 Personal Information
                 <ChevronRight className="h-4 w-4" />
@@ -35,7 +35,7 @@ export default function Settings() {
             <Link href="/dashboard/settings/change-password">
               <Button
                 variant="ghost"
-                className="w-full justify-between p-4 h-auto font-medium text-left hover:bg-gray-50"
+                className="w-full cursor-pointer justify-between p-4 h-auto font-medium text-left hover:bg-gray-50"
               >
                 Change Password
                 <ChevronRight className="h-4 w-4" />
