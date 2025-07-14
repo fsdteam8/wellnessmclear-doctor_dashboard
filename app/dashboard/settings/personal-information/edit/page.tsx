@@ -141,9 +141,47 @@ export default function EditPersonalInformation() {
       availability: [{ day: "", slots: [{ startTime: "", endTime: "" }] }],
       certifications: [{ name: "" }],
     },
+    resolver: async (data) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errors: any = {};
+      const values = { ...data };
+
+      // Validate availability slots for AM/PM
+      values.availability.forEach((avail, index) => {
+        avail.slots.forEach((slot, slotIndex) => {
+          const startTime = slot.startTime?.trim();
+          const endTime = slot.endTime?.trim();
+
+          if (startTime && !/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(startTime)) {
+            if (!errors.availability) errors.availability = [];
+            if (!errors.availability[index]) errors.availability[index] = { slots: [] };
+            if (!errors.availability[index].slots[slotIndex]) errors.availability[index].slots[slotIndex] = {};
+            errors.availability[index].slots[slotIndex].startTime = {
+              type: "pattern",
+              message: "Start time must include AM or PM (e.g., 10:20 AM)",
+            };
+          }
+
+          if (endTime && !/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(endTime)) {
+            if (!errors.availability) errors.availability = [];
+            if (!errors.availability[index]) errors.availability[index] = { slots: [] };
+            if (!errors.availability[index].slots[slotIndex]) errors.availability[index].slots[slotIndex] = {};
+            errors.availability[index].slots[slotIndex].endTime = {
+              type: "pattern",
+              message: "End time must include AM or PM (e.g., 10:20 PM)",
+            };
+          }
+        });
+      });
+
+      return {
+        values,
+        errors: Object.keys(errors).length > 0 ? errors : {},
+      };
+    },
   });
 
-  const { fields: skills, append: addSkill, } = useFieldArray({
+  const { fields: skills, append: addSkill } = useFieldArray({
     control,
     name: "skills",
   });
@@ -153,7 +191,7 @@ export default function EditPersonalInformation() {
     name: "availability",
   });
 
-  const { fields: certifications, append: addCertification, } = useFieldArray({
+  const { fields: certifications, append: addCertification } = useFieldArray({
     control,
     name: "certifications",
   });
@@ -231,7 +269,6 @@ export default function EditPersonalInformation() {
       if (user.profileImage) {
         setPreviewAvatar(user.profileImage);
       }
-
     }
   }, [user, reset]);
 
@@ -656,16 +693,30 @@ export default function EditPersonalInformation() {
                     />
                     {avail.slots.map((slot, slotIndex) => (
                       <div key={slotIndex} className="grid grid-cols-2 gap-4">
-                        <Input
-                          placeholder="Start Time (e.g., 11:00 AM)"
-                          {...register(`availability.${index}.slots.${slotIndex}.startTime`)}
-                          className="h-12 border-gray-300"
-                        />
-                        <Input
-                          placeholder="End Time (e.g., 01:00 PM)"
-                          {...register(`availability.${index}.slots.${slotIndex}.endTime`)}
-                          className="h-12 border-gray-300"
-                        />
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="Start Time (e.g., 11:00 AM)"
+                            {...register(`availability.${index}.slots.${slotIndex}.startTime`)}
+                            className="h-12 border-gray-300"
+                          />
+                          {errors.availability?.[index]?.slots?.[slotIndex]?.startTime && (
+                            <p className="text-red-500 text-sm">
+                              {errors.availability[index].slots[slotIndex].startTime.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="End Time (e.g., 01:00 PM)"
+                            {...register(`availability.${index}.slots.${slotIndex}.endTime`)}
+                            className="h-12 border-gray-300"
+                          />
+                          {errors.availability?.[index]?.slots?.[slotIndex]?.endTime && (
+                            <p className="text-red-500 text-sm">
+                              {errors.availability[index].slots[slotIndex].endTime.message}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <Button

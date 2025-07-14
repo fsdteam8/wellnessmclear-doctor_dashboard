@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { LayoutDashboard, History, Wallet, Settings, LogOut, Settings2 } from "lucide-react"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,8 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const session = useSession()
+
   const [email, setEmail] = useState("")
   const [open, setOpen] = useState(false)
 
@@ -33,7 +35,8 @@ export function Sidebar() {
           body: JSON.stringify({ email }),
           headers: {
             "Content-Type": "application/json",
-            // Authorization: `Bearer ${TOKEN}`,
+            Authorization: `Bearer ${session.data?.user.accessToken}`,
+          
           },
         }
 
@@ -50,7 +53,7 @@ export function Sidebar() {
       // toast.success("");
     },
     onError: (error) => {
-      console.error("Delete failed:", error);
+      console.log("Delete failed:", error);
       toast.error(error.message);
     },
   });

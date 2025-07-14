@@ -16,8 +16,8 @@ import {
 import { Upload, Plus, Calendar } from "lucide-react"
 import Image from "next/image"
 import type { BasicFormData, ProfessionalFormData } from "../page"
-import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface ProfessionalInfoFormProps {
   basicData: BasicFormData
@@ -49,11 +49,14 @@ export default function ProfessionalInfoForm({
     certifications: [],
   })
 
+  const [timeErrors, setTimeErrors] = useState<{
+    [key: string]: { startTime: string; endTime: string }
+  }>({})
+
   const router = useRouter()
 
   const [profilePreview, setProfilePreview] = useState<string | null>(null)
   const [certificationFilesPreview, setCertificationFilesPreview] = useState<string[]>([])
-
 
   const submitMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -70,16 +73,42 @@ export default function ProfessionalInfoForm({
       return response.json()
     },
     onSuccess: (res) => {
-      toast.success(res.message || "Registration successful!")
+      toast.success(res.message)
       router.push("/login")
     },
     onError: (error: Error) => {
-      toast.error( "Registration failed: " + error.message)
+      // Using alert since toast was removed, but you could replace with another UI feedback method
+      alert("Registration failed: " + error.message)
     },
   })
 
+  const validateTimeFormat = (time: string): string => {
+    if (!time) return ""
+    const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i
+    return timeRegex.test(time.trim()) ? "" : "Time must include AM/PM (e.g., 10:09 AM)"
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate all time inputs
+    const newErrors: { [key: string]: { startTime: string; endTime: string } } = {}
+    let hasErrors = false
+
+    formData.availability.forEach((avail, index) => {
+      avail.slots.forEach((slot, slotIndex) => {
+        const errorKey = `${index}-${slotIndex}`
+        const startTimeError = validateTimeFormat(slot.startTime)
+        const endTimeError = validateTimeFormat(slot.endTime)
+        newErrors[errorKey] = { startTime: startTimeError, endTime: endTimeError }
+        if (startTimeError || endTimeError) {
+          hasErrors = true
+        }
+      })
+    })
+
+    setTimeErrors(newErrors)
+    if (hasErrors) return
 
     const submitData = new FormData()
     submitData.append("firstName", basicData.firstName)
@@ -110,7 +139,6 @@ export default function ProfessionalInfoForm({
 
     submitMutation.mutate(submitData)
   }
-
 
   const { data } = useQuery({
     queryKey: ["services"],
@@ -178,7 +206,6 @@ export default function ProfessionalInfoForm({
     newAvailability[availabilityIndex].slots.push({ startTime: "", endTime: "" })
     setFormData((prev) => ({ ...prev, availability: newAvailability }))
   }
-
 
   return (
     <div className=" bg-white w-full rounded-lg shadow-sm p-8">
@@ -288,7 +315,7 @@ export default function ProfessionalInfoForm({
         </div>
 
         {/* Years Of Experience */}
-        <div >
+        <div>
           <Label className="block mb-2 text-sm font-medium text-gray-700">Years Of Experience</Label>
           <Select
             value={formData.yearsOfExperience}
@@ -297,7 +324,7 @@ export default function ProfessionalInfoForm({
             <SelectTrigger className="h-12 w-full border-gray-300">
               <SelectValue placeholder="Select years of experience" />
             </SelectTrigger>
-            <SelectContent >
+            <SelectContent>
               {Array.from({ length: 50 }, (_, i) => (
                 <SelectItem key={i + 1} value={(i + 1).toString()}>
                   {i + 1} {i + 1 === 1 ? "year" : "years"}
@@ -359,26 +386,54 @@ export default function ProfessionalInfoForm({
                 </Select>
                 {avail.slots.map((slot, slotIndex) => (
                   <div key={slotIndex} className="grid grid-cols-2 gap-4">
-                    <Input
-                      placeholder="Start Time (e.g., 11:00 AM)"
-                      value={slot.startTime}
-                      onChange={(e) => {
-                        const newSlots = [...avail.slots]
-                        newSlots[slotIndex] = { ...newSlots[slotIndex], startTime: e.target.value }
-                        handleAvailabilityChange(index, "slots", newSlots)
-                      }}
-                      className="h-12 border-gray-300"
-                    />
-                    <Input
-                      placeholder="End Time (e.g., 01:00 PM)"
-                      value={slot.endTime}
-                      onChange={(e) => {
-                        const newSlots = [...avail.slots]
-                        newSlots[slotIndex] = { ...newSlots[slotIndex], endTime: e.target.value }
-                        handleAvailabilityChange(index, "slots", newSlots)
-                      }}
-                      className="h-12 border-gray-300"
-                    />
+                    <div>
+                      <Input
+                        placeholder="Start Time (e.g., 11:00 AM)"
+                        value={slot.startTime}
+                        onChange={(e) => {
+                          const newSlots = [...avail.slots]
+                          newSlots[slotIndex] = { ...newSlots[slotIndex], startTime: e.target.value }
+                          handleAvailabilityChange(index, "slots", newSlots)
+                          setTimeErrors((prev) => ({
+                            ...prev,
+                            [`${index}-${slotIndex}`]: {
+                              ...prev[`${index}-${slotIndex}`],
+                              startTime: validateTimeFormat(e.target.value),
+                            },
+                          }))
+                        }}
+                        className={`h-12 border-gray-300 ${timeErrors[`${index}-${slotIndex}`]?.startTime ? 'border-red-500' : ''}`}
+                      />
+                      {timeErrors[`${index}-${slotIndex}`]?.startTime && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {timeErrors[`${index}-${slotIndex}`].startTime}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Input
+                        placeholder="End Time (e.g., 01:00 PM)"
+                        value={slot.endTime}
+                        onChange={(e) => {
+                          const newSlots = [...avail.slots]
+                          newSlots[slotIndex] = { ...newSlots[slotIndex], endTime: e.target.value }
+                          handleAvailabilityChange(index, "slots", newSlots)
+                          setTimeErrors((prev) => ({
+                            ...prev,
+                            [`${index}-${slotIndex}`]: {
+                              ...prev[`${index}-${slotIndex}`],
+                              endTime: validateTimeFormat(e.target.value),
+                            },
+                          }))
+                        }}
+                        className={`h-12 border-gray-300 ${timeErrors[`${index}-${slotIndex}`]?.endTime ? 'border-red-500' : ''}`}
+                      />
+                      {timeErrors[`${index}-${slotIndex}`]?.endTime && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {timeErrors[`${index}-${slotIndex}`].endTime}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
                 <Button
@@ -406,7 +461,7 @@ export default function ProfessionalInfoForm({
             onValueChange={(value) => setFormData((prev) => ({ ...prev, servicesOffered: value }))}
           >
             <SelectTrigger className="h-12 w-full border-gray-300">
-              <SelectValue placeholder="Select Gender" />
+              <SelectValue placeholder="Select Service" />
             </SelectTrigger>
             <SelectContent>
               {data?.data?.map((service: Service, i: number) => (
@@ -419,8 +474,6 @@ export default function ProfessionalInfoForm({
         </div>
 
         {/* Certifications */}
-
-
         <div>
           <Label className="block mb-3 text-sm font-medium text-gray-700">Certifications</Label>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -479,28 +532,6 @@ export default function ProfessionalInfoForm({
           </div>
         </div>
 
-
-
-        {/* <div>
-          <Label className="block mb-3 text-sm font-medium text-gray-700">Certifications</Label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-500"></p>
-            <label className="inline-block mt-2 cursor-pointer text-blue-500 hover:underline">
-              Browse
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || [])
-                  setFormData((prev) => ({ ...prev, certifications: files }))
-                }}
-                className="hidden"
-              />
-            </label>
-          </div>
-        </div> */}
         {/* Certifications Name */}
         <div>
           <Label className="block mb-2 text-sm font-medium text-gray-700">Certifications Name</Label>
