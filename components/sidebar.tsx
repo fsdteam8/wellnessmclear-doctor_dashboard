@@ -61,7 +61,7 @@ export function Sidebar() {
       if (url) {
         toast.success("Redirecting to Stripe onboarding...")
         setOpen(false)
-        window.location.href = url // 🔁 Redirect to Stripe
+        window.location.href = url 
       } else {
         toast.error(res.message || "Stripe URL not found.")
       }
