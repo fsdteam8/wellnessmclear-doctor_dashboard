@@ -1,23 +1,24 @@
-"use client"
-import React, { useEffect } from 'react'
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const Redirect = () => {
+  const router = useRouter();
 
-    useEffect(()=>{
-        // Redirect to dashboard after 3 seconds
-        const timer = setTimeout(() => {
-            window.location.href = '/dashboard';
-        }, 1000);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push("/dashboard");
+    }, 1000);
 
-        // Cleanup the timer on component unmount
-        return () => clearTimeout(timer);
-    })
+    return () => clearTimeout(timer);
+  }, [router]);
 
   return (
-    <div>
-         <h1 className='text-center flex items-center justify-center w-full h-screen'>Go to dashboard</h1>
+    <div className="flex items-center justify-center w-full h-screen">
+      <h1 className="text-center text-xl font-semibold">Redirecting to dashboard...</h1>
     </div>
-  )
-}
+  );
+};
 
-export default Redirect
+export default Redirect;
