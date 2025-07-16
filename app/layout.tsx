@@ -13,6 +13,9 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "WMC Dashboard",
   description: "Wellness Management Center Dashboard",
+  icons:{
+    icon:"/middleNavLogo.svg"
+  }
 }
 
 export default function RootLayout({
