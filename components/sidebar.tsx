@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
+import Image from "next/image"
 
 const navigation = [
   { id: 1, name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -83,8 +84,9 @@ export function Sidebar() {
   return (
     <div className="w-64 bg-[#2F3E34] min-h-screen flex flex-col">
       {/* Logo */}
-      <div className="p-6">
-        <h1 className="text-white text-xl font-bold">WMC</h1>
+      <div className="p-6 flex items-center justify-center">
+        {/* <h1 className="text-white text-xl font-bold">WMC</h1> */}
+        <Image src={'/middleNavLogo.svg'} alt="" width={100} height={100}/>
       </div>
 
       {/* Navigation */}
